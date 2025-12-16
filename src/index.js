@@ -1,5 +1,6 @@
-
 const calcService = require('../services/calcService')
+require('dotenv').config({ path: `../.env.${process.env.NODE_ENV || 'development'}` });
+const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser'); //to convert the body of incoming requests into JavaScript objects
 const cors = require('cors'); //to configure Express to add headers stating that this API accepts requests coming = other origins
@@ -8,7 +9,7 @@ const morgan = require('morgan'); // adds some logging capabilities to this Expr
 //const config = require('../config');
 const connection = require('../db')
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.SERVER_PORT || 3001;
 
 const legalProducers = [
   'avant',
@@ -30,7 +31,18 @@ app.use(cors());
 // adding morgan to log HTTP requests
 app.use(morgan('combined'));
 
-app.use(express.json()); // обязательно, чтобы читать req.body в POST
+// обязательно, чтобы читать req.body в POST
+app.use(express.json());
+
+// Раздача статических файлов React (предполагаем, что build в папке /build)
+if (process.env.NODE_ENV === 'production') {
+  const buildPath = path.join(__dirname, '../build');
+  app.use(express.static(buildPath));
+  app.get('*', (req, res) => {
+    // Все остальные запросы — отдаем index.html для SPA
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+}
 
 app.get('/api/:table', (req, res) => {
   const{producer, name} = req.params
@@ -77,5 +89,5 @@ app.post('/api/calc', async (req, res) => {
 })
 
 app.listen(PORT, () => {
-  console.log(`listening on port ${PORT}`);
+  console.log(`Server running in ${process.env.NODE_ENV} mode and listening on port ${PORT}`);
 });
