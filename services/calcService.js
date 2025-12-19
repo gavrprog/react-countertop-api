@@ -16,7 +16,7 @@ async function calculate({ shape, dimentions, stone, chamfer, additional }){
     //поправочное слогаемое, чтобы правильно вычислить длину фаски
     //длины столешницы складываются и прибавляется два торца
     //если столешница не прямая, то в суммарной длине столешницы уже сидит как минимум один торец
-    const correction = (Object.keys(dimentions).length - 2 ) * 2
+    const correction = (Object.values(dimentions).filter(value => value !== '').length - 2 ) * 2
 
     if (stone.producer && stone.color) {
         width = +dimentions.length_a
@@ -24,24 +24,40 @@ async function calculate({ shape, dimentions, stone, chamfer, additional }){
             if(length !== 'length_a'){
                 arrayLengths.push(+dimentions[length])
                 lengthsSum += +dimentions[length]
-                lengthToCut += 2 * (+dimentions[length] + width) / 1000
             }
         }   
     }
+    //sustract from C and D 600mm
+    lengthToCut += 2 * (arrayLengths[0] + +dimentions.length_a) / 1000
+    for (let i = 1; i < arrayLengths.length; i++){
+        arrayLengths[i] -= 600
+        lengthToCut += 2 * (arrayLengths[i] + +dimentions.length_a) / 1000
+    }
     const lengthChamfer = (lengthsSum + width * (2 - correction)) / 1000
     const countSlab = countQuantitySlabs(slab, arrayLengths) * 0.5
-    const deliveryHalf = (countSlab - Math.trunc(countSlab))
+    const deliveryHalf = (countSlab - Math.trunc(countSlab)) / 0.5
 
     const sum =
         countSlab * slab.price + 
         lengthToCut * processPrice.cutting +
         lengthChamfer * chamferPrice +
-        processPrice.cuttingFigure +
+        processPrice.cuttingFigure * 2 +
         (additional.sink ? 1 : 0) * (processPrice.cuttingWashing + processPrice.drillWaterTap) +
         (additional.montage ? 1 : 0) * lengthsSum /1000 * processPrice.mountCountertop +
         (additional.delivery ? 1 : 0) * processPrice.deliveryProduct +
         deliveryHalf * processPrice.deliveryStoneHalf +
         Math.trunc(countSlab) * processPrice.deliveryStoneOne
+
+        // console.log(countSlab * slab.price,
+        //     lengthToCut, processPrice.cutting, 
+        //     lengthChamfer,chamferPrice, 
+        //     processPrice.cuttingFigure * 2, 
+        //     (additional.sink ? 1 : 0) * (processPrice.cuttingWashing + processPrice.drillWaterTap),
+        // (additional.montage ? 1 : 0) * lengthsSum /1000 * processPrice.mountCountertop,
+        // (additional.delivery ? 1 : 0) * processPrice.deliveryProduct,
+        // deliveryHalf , processPrice.deliveryStoneHalf, 
+        // Math.trunc(countSlab),processPrice.deliveryStoneOne
+        // )
 
     return sum
 }
@@ -72,6 +88,7 @@ function countQuantitySlabs(slab, arrayLengths) {
                 break;
             }
         }
+
         if (currentRemainder === 0 && userLength != 0) {
             currentRemainder = length;
             if (currentRemainder >= userLength) {				
@@ -83,6 +100,7 @@ function countQuantitySlabs(slab, arrayLengths) {
                 count += Math.trunc(ratio) + 1;
             }
         }
+
         arrayRemainders.push(currentRemainder);
         arrayRemainders.sort((a, b) => a - b);
         currentRemainder = 0;
